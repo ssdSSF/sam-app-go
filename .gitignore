@@ -1,0 +1,9 @@
+.vscode
+.aws-sam
+
+env-prod.json
+env-local.json
+
+samconfig.toml
+
+template-*.yaml

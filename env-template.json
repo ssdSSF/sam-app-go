@@ -1,0 +1,8 @@
+{
+    "CrudStudentsFunction": {
+      "ConnectionString": "<username>:<password>@tcp(<hostname>:3306)/<crud>"
+    },
+    "CrudStudentFunction": {
+      "ConnectionString": "<username>:<password>@tcp(<hostname>:3306)/<crud>"
+    }
+}
