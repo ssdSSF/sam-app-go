@@ -7,3 +7,4 @@ env-local.json
 samconfig.toml
 
 template-*.yaml
+template.yaml
