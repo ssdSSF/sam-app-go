@@ -1,16 +1,6 @@
 # sam-app-go
 
-This is a sample template for sam-app-go - Below is a brief explanation of what we have generated for you:
-
-```bash
-.
-├── Makefile                    <-- Make to automate build
-├── README.md                   <-- This instructions file
-├── hello-world                 <-- Source code for a lambda function
-│   ├── main.go                 <-- Lambda function code
-│   └── main_test.go            <-- Unit tests
-└── template.yaml
-```
+This is a modified sample app from aws `sam init` using Go.
 
 ## Requirements
 
@@ -18,18 +8,62 @@ This is a sample template for sam-app-go - Below is a brief explanation of what 
 * [Docker installed](https://www.docker.com/community-edition)
 * [Golang](https://golang.org)
 * SAM CLI - [Install the SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html)
+* MySQL Database (for local development)
+* AWS RDS (for AWS deployment)
 
 ## Setup process
 
-### Installing dependencies & building the target 
+### Install MySQL
+
+Make sure MySQL is installed in your local. The table this CRUD application is going to use is called `students`. The database name is "crud":
+
+``` SQL
+create database crud;
+
+use crud;
+
+CREATE TABLE `students` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `first_name` varchar(256) NOT NULL,
+  `last_name` varchar(256) NOT NULL,
+  `email` varchar(256) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `id_UNIQUE` (`id`),
+  UNIQUE KEY `email_UNIQUE` (`email`)
+) ENGINE=InnoDB;
+
+insert students (first_name, last_name, email) values ('Jim', 'Rome', 'jim.rome@gmail.com')
+```
+
+### Prepare the DB connection string
+
+To connect to local, the mysql connection string for Go would be:
+
+```
+<username>:<password>@tcp(<your machine name>.local:3306)/crud
+```
+
+### Generate template.yaml
+
+Sam requires a `template.yaml` either to run it locally or in AWS Lambda. We need to manually generate the template.yaml by running:
+
+```
+cd crud-cli
+go install
+cd ..
+~/go/bin/crud-cli template --set ConnectionString='root:Welcome1@tcp(<your hostname>.local:3306)/crud' -f ./template.goyaml > template.yaml
+```
+
+It will generate the `template.yaml` required by `sam` into the project root directory. Please note that the connection string above uses `root` as the username, `Welcome1` as the password, and `<your hostname>` as the hostname. Please note that sam is running in a Docker container locally. `localhost` or `127.0.0.1` will not work as it will connect to the docker container locally.
+
+### sam build
 
 In this example we use the built-in `sam build` to automatically download all the dependencies and package our build target.   
 Read more about [SAM Build here](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-cli-command-reference-sam-build.html) 
 
-The `sam build` command is wrapped inside of the `Makefile`. To execute this simply run
  
 ```shell
-make
+sam build
 ```
 
 ### Local development
@@ -37,104 +71,64 @@ make
 **Invoking function locally through local API Gateway**
 
 ```bash
-sam local start-api
+sam local start-api -p 3001
 ```
 
-If the previous command ran successfully you should now be able to hit the following local endpoint to invoke your function `http://localhost:3000/hello`
+If sam started successfully, you should be able to see REST endpoints as:
 
-**SAM CLI** is used to emulate both Lambda and API Gateway locally and uses our `template.yaml` to understand how to bootstrap this environment (runtime, where the source code is, etc.) - The following excerpt is what the CLI will read in order to initialize an API and its routes:
-
-```yaml
-...
-Events:
-    HelloWorld:
-        Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
-        Properties:
-            Path: /hello
-            Method: get
+```
+http://127.0.0.1:3001/hello [GET]
+http://127.0.0.1:3001/crud/student [DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT]
+http://127.0.0.1:3001/crud/students [GET]
 ```
 
-## Packaging and deployment
-
-AWS Lambda Golang runtime requires a flat folder with the executable generated on build step. SAM will use `CodeUri` property to know where to look up for the application:
-
-```yaml
-...
-    FirstFunction:
-        Type: AWS::Serverless::Function
-        Properties:
-            CodeUri: hello_world/
-            ...
+```
+% curl http://127.0.0.1:3001/hello 
+Hello, 160.34.93.102
 ```
 
-To deploy your application for the first time, run the following in your shell:
+### REST endpoints
 
-```bash
+List students
+
+```
+% curl http://127.0.0.1:3001/crud/students
+{
+  "Count": 1,
+  "Students": [
+    {
+      "Id": "1",
+      "FirstName": "Jim",
+      "LastName": "Rome",
+      "Email": "jim.rome@gmail.com"
+    }
+  ]
+}
+
+```
+
+Please see the [frontend repo](https://github.com) for the full REST API invokement.
+
+### Production deployment
+
+Make sure you have aa [AWS RDS DB](https://aws.amazon.com/rds/). The connection string will be very similar to:
+
+```
+admin:Welcome1@tcp(sam-app.cxxxxxxx3.us-west-2.rds.amazonaws.com:3306)/crud
+```
+
+Generate the `template.yaml` for Lambda deployment that will connect to AWS RDS:
+
+```
+~/go/bin/crud-cli template --set ConnectionString='admin:Welcome1@tcp(sam-app.cxxxxxxx3.us-west-2.rds.amazonaws.com:3306)/crud' -f ./template.goyaml > template.yaml
+```
+
+Build again:
+```
+sam build
+```
+
+Deploy:
+```
 sam deploy --guided
 ```
-
-The command will package and deploy your application to AWS, with a series of prompts:
-
-* **Stack Name**: The name of the stack to deploy to CloudFormation. This should be unique to your account and region, and a good starting point would be something matching your project name.
-* **AWS Region**: The AWS region you want to deploy your app to.
-* **Confirm changes before deploy**: If set to yes, any change sets will be shown to you before execution for manual review. If set to no, the AWS SAM CLI will automatically deploy application changes.
-* **Allow SAM CLI IAM role creation**: Many AWS SAM templates, including this example, create AWS IAM roles required for the AWS Lambda function(s) included to access AWS services. By default, these are scoped down to minimum required permissions. To deploy an AWS CloudFormation stack which creates or modifies IAM roles, the `CAPABILITY_IAM` value for `capabilities` must be provided. If permission isn't provided through this prompt, to deploy this example you must explicitly pass `--capabilities CAPABILITY_IAM` to the `sam deploy` command.
-* **Save arguments to samconfig.toml**: If set to yes, your choices will be saved to a configuration file inside the project, so that in the future you can just re-run `sam deploy` without parameters to deploy changes to your application.
-
-You can find your API Gateway Endpoint URL in the output values displayed after deployment.
-
-### Testing
-
-We use `testing` package that is built-in in Golang and you can simply run the following command to run our tests:
-
-```shell
-go test -v ./hello-world/
-```
-# Appendix
-
-### Golang installation
-
-Please ensure Go 1.x (where 'x' is the latest version) is installed as per the instructions on the official golang website: https://golang.org/doc/install
-
-A quickstart way would be to use Homebrew, chocolatey or your linux package manager.
-
-#### Homebrew (Mac)
-
-Issue the following command from the terminal:
-
-```shell
-brew install golang
-```
-
-If it's already installed, run the following command to ensure it's the latest version:
-
-```shell
-brew update
-brew upgrade golang
-```
-
-#### Chocolatey (Windows)
-
-Issue the following command from the powershell:
-
-```shell
-choco install golang
-```
-
-If it's already installed, run the following command to ensure it's the latest version:
-
-```shell
-choco upgrade golang
-```
-
-## Bringing to the next level
-
-Here are a few ideas that you can use to get more acquainted as to how this overall process works:
-
-* Create an additional API resource (e.g. /hello/{proxy+}) and return the name requested through this new path
-* Update unit test to capture that
-* Package & Deploy
-
-Next, you can use the following resources to know more about beyond hello world samples and how others structure their Serverless applications:
-
-* [AWS Serverless Application Repository](https://aws.amazon.com/serverless/serverlessrepo/)
