@@ -45,7 +45,7 @@ To connect to local, the mysql connection string for Go would be:
 
 ### Generate template.yaml
 
-Sam requires a `template.yaml` either to run it locally or in AWS Lambda. We need to manually generate the template.yaml by running:
+`sam` requires a `template.yaml` either to run it locally or in AWS Lambda. Please note that this project does not include the required `template.yaml`. It has to be generated through the `template.goyaml` by running:
 
 ```
 cd crud-cli
@@ -54,7 +54,7 @@ cd ..
 ~/go/bin/crud-cli template --set ConnectionString='root:Welcome1@tcp(<your hostname>.local:3306)/crud' -f ./template.goyaml > template.yaml
 ```
 
-It will generate the `template.yaml` required by `sam` into the project root directory. Please note that the connection string above uses `root` as the username, `Welcome1` as the password, and `<your hostname>` as the hostname. Please note that sam is running in a Docker container locally. `localhost` or `127.0.0.1` will not work as it will connect to the docker container locally.
+It will generate the `template.yaml` into the project root directory. The connection string above uses `root` as the username, `Welcome1` as the password, and `<your hostname>` as the hostname. Please also note that `sam` is running in a Docker container locally. `localhost` or `127.0.0.1` will not work as it will connect to the docker container locally.
 
 ### sam build
 
@@ -74,7 +74,7 @@ sam build
 sam local start-api -p 3001
 ```
 
-If sam started successfully, you should be able to see REST endpoints as:
+If `sam `started successfully, you should be able to see REST endpoints as:
 
 ```
 http://127.0.0.1:3001/hello [GET]
