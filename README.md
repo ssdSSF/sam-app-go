@@ -107,7 +107,7 @@ List students
 
 ```
 
-Please see the [frontend repo](https://github.com) for the full REST API invokement.
+Please see the [frontend repo](https://github.com/ssdSSF/React-CRUD-Operation-V2) for the full REST API invokement.
 
 ### Production deployment
 
